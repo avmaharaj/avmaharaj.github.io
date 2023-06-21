@@ -3,6 +3,6 @@ permalink: /about/
 title: "About"
 ---
 
-Tempor velit sint sunt ipsum tempor enim ad qui ullamco. Est dolore anim ad velit duis dolore minim sunt aliquip amet commodo labore. Ut eu pariatur aute ea aute excepteur laborum. Esse ea esse excepteur minim mollit qui cillum excepteur ex dolore magna. Labore deserunt fugiat incididunt incididunt sint ea. Consequat dolore aute laboris quis proident quis non et est consectetur ex eiusmod sit culpa.
+ I have been a data scientist at Adobe since 2017, where I have tried to do both “researchy” and “analytics” style work in Data Science/Statistics, as well as production ML Engineering. My general career goal is to know enough theory to understand research papers in Stats & ML, and to understand enough engineering to implement or architect such algorithms in production systems. I hope that this blog can have a similar theory + engineering vibe.
 
-Cupidatat ea do et in excepteur in. Ad nostrud ut est esse eu duis ea sunt eiusmod. Aliquip tempor veniam sint elit fugiat. Velit incididunt laboris amet incididunt labore dolore irure velit excepteur commodo deserunt laborum. Consectetur eu fugiat veniam veniam Lorem labore magna eiusmod. Ea occaecat reprehenderit pariatur consectetur minim labore ut aliquip.
+The content of the blog will hopeully live at the intersection of “things I’ve worked on (recommender systems, real time ad-ranking style contextual bandits, A/B testing etc.), and “things I’m interested in” (some stats papers, maybe new programming languages like Rust, and of course, Generative AI…). Expect to see a lot of Python, and some Scala and Java (and maybe some comparisons of these!)
