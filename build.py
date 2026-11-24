@@ -46,6 +46,8 @@ def main() -> None:
         if has_math:
             args.append("--katex")
         subprocess.run(args, input=preprocess(md.read_text()), text=True, check=True)
+        out = OUT / f"{slug}.html"
+        out.write_text(out.read_text().replace("<img ", '<img loading="lazy" '))
         print(f"built {OUT.name}/{slug}.html")
 
 
