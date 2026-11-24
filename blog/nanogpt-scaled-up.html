@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>(My attempt at) A Deep Learning Dev Setup: Scaling up
+nanogpt · Akash V. Maharaj</title>
+<meta name="description" content="(My attempt at) A Deep Learning Dev
+Setup: Scaling up nanogpt">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<a class="back" href="/">← Akash V. Maharaj</a>
+<article>
+<h1>(My attempt at) A Deep Learning Dev Setup: Scaling up nanogpt</h1>
+<p class="muted small">2023-06-16</p>
+<p>In the past few weeks, I have been following (and greatly enjoying)
+<a href="https://karpathy.ai/">Andrej Karpathy’s</a> <a
+href="https://karpathy.ai/zero-to-hero.html">Neural Networks: Zero to
+Hero course</a>. Towards the <a
+href="https://www.youtube.com/watch?v=kCc8FmEb1nY&amp;t=6050s">end of
+the final video</a> he “scales up” the GPT model, but (sadly for me)
+warns <em>“I would not run this on a CPU or Macbook or something like
+that”</em>.</p>
+<p>Having studiously worked through 12 hours of these lectures, I felt
+mildly deflated that I wouldn’t be able reproduce this final benchmark
+and generate some semi-realistic Shakespeare text on my measly M1
+MacBook Air. But Andrej, being the benevolent teacher that he is, left a
+breadcrumb in the supplementary links of the video - he mentions that he
+uses the <a href="https://lambdalabs.com/service/gpu-cloud">Lambda GPU
+Cloud</a> which is <em>“the best and easiest way to spin up an on-demand
+GPU instance”</em>.</p>
+<p>So this short blog fills in the dots on how to create a deep learning
+development/research environment that uses VSCode as an IDE, <a
+href="https://lambdalabs.com/service/gpu-cloud">Lambda Cloud GPU
+instances</a> for compute, as well as <a
+href="https://wandb.ai/">Weights and Biases</a> for experiment
+tracking.</p>
+<div class="notice">
+<p><strong>Note</strong>: I am sure that the steps described below are
+completely trivial to many, however, given my initial intimidation at
+the prospect of doing this, and my surprise at how simple it was, I
+thought it would be worth writing down. <strong>Also note</strong> this
+guide was written for someone using a Mac, or Unix-like device.</p>
+</div>
+<p>I cover: 1. Creation of a Lambda GPU Instance and connecting to it.
+2. Configuring VSCode for remote development, and some handy command
+line utilities for syncing code. 3. Setting up Weights and Biases for
+experiment tracking.</p>
+<p>In the spirit of Andrej’s lectures, I’ll also point out places where
+I stumbled.</p>
+<h2 id="conceptual-view-of-development-workflow">Conceptual view of
+development workflow</h2>
+Since a picture can often clarify, below is a conceptual view of the
+development workflow I will describe.
+<figure>
+<img src="/assets/images/nanogpt-scaled-up/ml_dev_setup.png" alt="Conceptual Overview of Dev Setup">
+<figcaption>
+Conceptual overview of the development setup for a deep learning
+project.
+</figcaption>
+</figure>
+<p>Karpathy’s lectures covered steps <strong><em>1</em></strong> and
+<strong><em>2</em></strong> of the development workflow shown above:
+interactive prototyping in Jupyter notebooks, and subsequent “cleaning
+up” of this code in a proper. IDE environment like VSCode. This short
+blogpost covers steps <strong><em>3</em></strong> onwards.</p>
+<h2 id="launching-a-cloud-gpu-instance">Launching a Cloud GPU
+Instance</h2>
+<p>LambdaLabs has a great on-boarding and time-to-value experience (I
+swear I’m not being paid to say this!). Within about 10 minutes, I was
+able to spin up and <code>ssh</code> into a GPU instance that has most
+of the popular deep learning libraries pre-installed.</p>
+<p>The <a
+href="https://lambdalabs.com/blog/getting-started-with-lambda-cloud-gpu-instances">Lambda
+Cloud docs</a>, as well as the user experience is fairly self contained,
+however here is a brief overview of the steps you must follow: 1. Create
+a LambdaLabs account, which simply requires an email address (I chose an
+Individual account) 2. Add a payment method to LambdaLabs (credit card
+required) 3. Launch an Instance from the Lambda Cloud instances page. 4.
+This will prompt you to create an SSH key. I created an RSA key using
+<code>ssh-keygen</code> from my Mac terminal, and uploaded the public
+key to the Lambda UI. 5. After some time, your instance will then be
+available for you to <code>ssh</code> into, with a handy command line
+instruction that can be copied from the console (see screenshots below).
+6. <em>Make sure that you tear down your instance when you’re done
+working</em>. Don’t do what I did: get distracted, forget that your
+instance is up, and leave an H100 instance running overnight for no
+reason :man_facepalming:.</p>
+<div class="notice">
+<p><strong>Tip</strong>: Before attempting to <code>ssh</code> onto your
+Cloud GPU instance, ensure that the ssh identity is added to your
+authentication agent by running
+<code>ssh-add /location/of-your/ssh-private-key</code>. Once you’re
+logged in, you can view the instantaneous status of your GPU with the
+command <code>nvidia-smi</code>, or <code>watch nvidia-smi</code> for
+continuous monitoring. As we’ll see later, Weights &amp; Biases
+automatically tracks GPU usage statistics for you.</p>
+</div>
+<figure>
+<img src="/assets/images/nanogpt-scaled-up/lambdalabs_cloud_instance.png" alt="Lambda Labs Cloud Instance" >
+<figcaption>
+A view of the Lambda Labs cloud GPU instance page, with an H100 instance
+up and running
+</figcaption>
+</figure>
+<h2 id="using-the-cloud-gpu-instance">Using the Cloud GPU Instance</h2>
+<p>Now that we have the cloud instance up and running, we’d like to
+start getting productive. To do so, we need to accomplish the following:
+1. Copy code from your <code>local</code> machine to the
+<code>remote</code> cloud instance 2. Edit code on the
+<code>remote</code> instance, preferably directly in an IDE. 3. Launch
+training jobs on the remote instance.</p>
+<h3 id="copying-code-to-the-remote">Copying code to the remote</h3>
+<p>To copy code to the remote machine, we’ll use the <code>rsync</code>
+command, which is fast and robust. In my case, I copied my entire
+<code>nanogpt</code> directory over to the home directory on the remote
+machine</p>
+<pre class="bash"><code>% rsync -r nanogpt ubuntu@209.20.159.97:~/</code></pre>
+<h3 id="vscode-for-remote-development">VSCode for remote
+development</h3>
+<p>To configure remote development, we can install VSCode’s <a
+href="https://code.visualstudio.com/docs/remote/remote-overview">Remote
+Development Extension Pack</a>: - From the Extensions tab (Cmd-Shift-X),
+search for the Remote Development extension and install it. - Launch a
+remote session by opening the command palette (Cmd-Shift-P), and
+searching for <em>Remote-SSH: Connect to Host</em>. - Follow prompts to
+add a new host, and type in your SSH command from before (in my case,
+<code>ssh ubuntu@209.20.159.97</code>. You will also have to select the
+appropriate ssh config file, where your previously added ssh identities
+should be present) - You can then navigate to your code directory from
+the left hand pane.<br />
+- VSCode should prompt you to install the appropriate Python extension,
+which then allows you to launch jobs directly from the IDE.</p>
+<figure>
+<img src="/assets/images/nanogpt-scaled-up/vscode_remote_dev.png" alt="VSCode Remote Development" >
+<figcaption>
+VSCode with remote development configured - note how I am viewing code
+on the remote cloud gpu instance, and VSCode is using the Cloud
+instance’s Python interpreter (Python 3.8 in this example) to run the
+training code. This is my reproduction of the scaled up run in
+<a href="https://youtu.be/kCc8FmEb1nY?t=6028">Karpathy’s nanGPT
+lecture</a> with a final loss of 1.48
+</figcaption>
+</figure>
+<h2 id="wb-for-experiment-tracking">W&amp;B for experiment tracking</h2>
+<p>A key part of “scaling up” any Machine Learning workflow is to not
+just using beefier compute, but also rapid <em>offline
+experimentation</em>: changing various hyperparameters (embedding sizes,
+learning rates etc.), and seeing their effects on key offline evaluation
+metrics (loss, precision, accuracy etc.).</p>
+<p>You can do this manually with Excel (yes, I’ve been there), or using
+local processes like Tensorboard, or you can hop onto the modern MLOps
+platform bandwagon! A thorough evaluation of which tool or platform to
+choose is beyond the scope of this article (see a <a
+href="https://fullstackdeeplearning.com/course/2022/lecture-2-development-infrastructure-and-tooling/#7-experiment-and-model-management">concise
+<em>enough</em> article</a> here from the Full Stack Deep Learning
+course, or you can try to understand scary images <a
+href="http://mattturck.com/wp-content/uploads/2021/12/2021-MAD-Landscape-v3.pdf">like
+this one</a> from <a href="https://mattturck.com/data2021/">Matt
+Turck</a>).</p>
+<p>I decided to try out Weights and Biases (W&amp;B), for the completely
+biased reasons that a) I had never used it before and wanted to try it,
+and b) many people in my twitter bubble rave about it, c) it is
+particularly useful as <em>centralized experiment tracker</em> when
+training a model on a remote instance.</p>
+<p>To expand on this last point: while we are forced to copy code back
+and forth to the Cloud GPU, we don’t want to do the same for the results
+of each training run. With a few lines of code, we can instead have all
+the key hyperparameters, metrics, and compute statistics persisted
+centrally (particularly useful given that Lambda Cloud’s GPU instances
+erase your data once terminated, and their persistent storage options
+are immature)</p>
+<p>For a personal project like this W&amp;B seems fantastic! Their
+on-boarding is easy, and time-to-value is fast. Following <a
+href="https://docs.wandb.ai/quickstart">their quickstart</a>, I added a
+run initialization near the top of the script, and refactored
+hyperparameters into a dataclass for reusability.</p>
+<details>
+<summary>
+<b><em>Code Snippet: Initializing W&amp;B Run</em></b>
+</summary>
+<pre class="python"><code># Hyperparameters as a dataclass for convenience
+@dataclass
+class NanoGPTConfig:
+    batch_size: int = 64
+    block_size: int = 256
+    max_iters: int = 5000
+    eval_interval: int = 500
+    learning_rate: int = 3e-4
+    device: str = &#39;cuda&#39; if torch.cuda.is_available() else &#39;cpu&#39;
+    eval_iters: int = 200
+    n_embd: int = 384
+    num_heads: int = 6
+    n_layer: int = 6
+    dropout: float = 0.2
+
+
+# Initialize the run
+params = NanoGPTConfig()
+
+# Start a new wandb in the nanogpt project run to track this script
+wandb.init(
+  # set the wandb project where this run will be logged
+  project=&quot;nanogpt&quot;,
+
+  # track hyperparameters and run metadata
+  config=asdict(params)
+)</code></pre>
+</details>
+<p><br> I then logged the training and validation loss during the
+training Loop as shown below.</p>
+<details>
+<summary>
+<b><em>Code Snippet: Logging Metrics during Training</em></b>
+</summary>
+<pre class="python"><code># The training loop:
+for iter in range(params.max_iters):
+    # every once in a while evaluate the loss on the train and val sets
+    if iter % params.eval_interval == 0 or iter == params.max_iters - 1:
+        losses = estimate_loss()
+        eval_dict = {&quot;step&quot;: iter, &quot;train_loss&quot;: losses[&#39;train&#39;], &quot;val_loss&quot;: losses[&#39;val&#39;]}
+        wandb.log(eval_dict) # Log to W&amp;B
+        print(eval_dict)
+
+    # sample a batch of data
+    xb, yb = get_batch(&#39;train&#39;)
+    # evaluate the loss
+    logits, loss = model(xb, yb)
+    # optimization step
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    optimizer.step()</code></pre>
+</details>
+<p><br> With this setup, I was able to log runs both from local
+environments, and the cloud environments.</p>
+<figure>
+<img src="/assets/images/nanogpt-scaled-up/wandb_run_history.png" alt="Weights and Biases Run History" >
+<figcaption>
+Screenshot of the Weights and Biases UI showing a history of runs, with
+local runs of the nanogpt training script alongside the GPU runs.
+</figcaption>
+</figure>
+<div class="notice">
+<p><strong>Debugging W&amp;B on Lambda Cloud Instances</strong>: When
+attempting to login, and then run Weights and Biases on the Lambda Cloud
+GPU instance, I saw a few errors. The section below reviews how I
+resolved these:</p>
+</div>
+<details>
+<summary>
+Resolving W&amp;B Errors on Lambda Cloud Instances
+</summary>
+<p>When first attempting to login to W&amp;B from the cloud instance, I
+saw an error as follows:</p>
+<pre class="bash"><code>ubuntu@209-20-159-97:~/nanogpt$ wandb login
+Traceback (most recent call last):
+  File &quot;/home/ubuntu/.local/bin/wandb&quot;, line 5, in &lt;module&gt;
+    from wandb.cli.cli import cli
+  File &quot;/home/ubuntu/.local/lib/python3.8/site-packages/wandb/cli/cli.py&quot;, line 927, in &lt;module&gt;
+    def launch_sweep(
+  File &quot;/usr/lib/python3/dist-packages/click/core.py&quot;, line 1234, in decorator
+    cmd = command(*args, **kwargs)(f)
+  File &quot;/usr/lib/python3/dist-packages/click/decorators.py&quot;, line 115, in decorator
+    cmd = _make_command(f, name, attrs, cls)
+  File &quot;/usr/lib/python3/dist-packages/click/decorators.py&quot;, line 88, in _make_command
+    return cls(name=name or f.__name__.lower().replace(&#39;_&#39;, &#39;-&#39;),
+TypeError: __init__() got an unexpected keyword argument &#39;no_args_is_help&#39;</code></pre>
+<p>This turned out to be an issue with the “click” library used by
+W&amp;B, and required an upgrade to the latest click version:
+<code>pip install --upgrade click</code>.</p>
+<p>Next, when trying to run the training script, I received some cryptic
+errors about transport failing:</p>
+<pre class="bash"><code>wandb: ERROR Internal wandb error: file data was not synced
+Problem at: /home/ubuntu/nanogpt/v2.py 29 &lt;module&gt;
+...
+wandb: ERROR transport failed</code></pre>
+<p>These turned out to <a
+href="https://github.com/wandb/wandb/issues/5001">require a protobuf
+downgrade</a>: running <code>pip install protobuf==3.20.0</code>
+worked.</p>
+</details>
+<h2 id="conclusion-and-thoughts-on-the-course">Conclusion, and thoughts
+on the Course</h2>
+<p>To conclude, I must say a few words about <a
+href="https://karpathy.ai/zero-to-hero.html">Andrej Karpathy’s neural
+networks zero-to-hero series</a>. I can’t recommend this course enough!
+He is a fantastic teacher - not only introducing concepts carefully and
+deliberately with stunning clarity, but also sharing tons of insights
+about his personal “workflow” as an AI researcher.</p>
+<p>I find these workflow details especially useful. For example, the way
+he moves back and forth between notebooks and IDEs when writing code, or
+the way he prototypes tensor operations like multiplication or
+broadcasting with manageable size input examples, and careful inspection
+or reasoning about dimensions of outputs. This mirrors and validates a
+style of work that I have also (organically) arrived at - using the
+notebook as a REPL, and building up to cleaner code in an IDE.</p>
+<p>So, in the spirit of sharing “workflow details,” I hope I was able to
+show how easy it can be to get a semi-serious developer setup going for
+deep learning projects. Yes - this blogpost is little more than a
+(verbose!) compendium of links and quickstart guides. But I hope it was
+useful for some people in lowering the barrier to running more serious
+deep learning jobs. Thanks for reading!</p>
+</article>
+<footer><a href="/">Home</a> · <a href="/#writing">All posts</a></footer>
+</body>
+</html>

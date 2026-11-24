@@ -1,6 +1,6 @@
 ---
 title: "(My attempt at) A Deep Learning Dev Setup: Scaling up nanogpt"
-date: 2023-05-23
+date: 2023-06-16
 categories:
   - Engineering
 tags:
