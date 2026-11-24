@@ -6,8 +6,10 @@
 <title>Welcome to my blog! · Akash V. Maharaj</title>
 <meta name="description" content="Welcome to my blog!">
 <link rel="stylesheet" href="/style.css">
+<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
+<button id="theme-toggle" type="button"></button>
 <a class="back" href="/">← Akash V. Maharaj</a>
 <article>
 <h1>Welcome to my blog!</h1>
@@ -54,5 +56,26 @@ self-indulgent as they’re going to be! Thanks for reading, and hope you
 enjoy future posts!</p>
 </article>
 <footer><a href="/">Home</a> · <a href="/#writing">All posts</a></footer>
+<script>
+(function () {
+  var b = document.getElementById("theme-toggle"), r = document.documentElement,
+      m = matchMedia("(prefers-color-scheme: dark)");
+  function cur() { return r.dataset.theme || (m.matches ? "dark" : "light"); }
+  function label() {
+    var d = cur() === "dark";
+    b.textContent = d ? "\u2600" : "\u263E";
+    b.title = "Switch to " + (d ? "light" : "dark") + " mode";
+    b.setAttribute("aria-label", b.title);
+  }
+  b.onclick = function () {
+    var t = cur() === "dark" ? "light" : "dark";
+    r.dataset.theme = t;
+    try { localStorage.setItem("theme", t); } catch (e) {}
+    label();
+  };
+  m.addEventListener("change", label);
+  label();
+})();
+</script>
 </body>
 </html>

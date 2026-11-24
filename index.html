@@ -6,8 +6,10 @@
 <title>Akash V. Maharaj</title>
 <meta name="description" content="Akash V. Maharaj — Principal Scientist at Adobe working on agentic AI (CX Enterprise Coworker). Former theoretical physicist (Stanford PhD).">
 <link rel="stylesheet" href="/style.css">
+<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
+<button id="theme-toggle" type="button"></button>
 
 <header class="top">
   <img src="/assets/images/bio-photo.jpeg" alt="Akash Maharaj" width="120" height="120">
@@ -171,7 +173,28 @@
 </ul>
 </section>
 
-<footer>Plain HTML, no JavaScript. Last updated Nov 2026.</footer>
+<footer>Plain HTML, one tiny script for the theme toggle. Last updated Nov 2026.</footer>
 
+<script>
+(function () {
+  var b = document.getElementById("theme-toggle"), r = document.documentElement,
+      m = matchMedia("(prefers-color-scheme: dark)");
+  function cur() { return r.dataset.theme || (m.matches ? "dark" : "light"); }
+  function label() {
+    var d = cur() === "dark";
+    b.textContent = d ? "\u2600" : "\u263E";
+    b.title = "Switch to " + (d ? "light" : "dark") + " mode";
+    b.setAttribute("aria-label", b.title);
+  }
+  b.onclick = function () {
+    var t = cur() === "dark" ? "light" : "dark";
+    r.dataset.theme = t;
+    try { localStorage.setItem("theme", t); } catch (e) {}
+    label();
+  };
+  m.addEventListener("change", label);
+  label();
+})();
+</script>
 </body>
 </html>
