@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """Render src/posts/*.md -> blog/<slug>.html with pandoc. No other dependencies.
 
-Usage: python3 build.py
+Usage: python3 build.py            # src/posts  -> blog/
+       python3 build.py --drafts   # src/drafts -> drafts/ (gitignored, local preview only)
 Post filenames: YYYY-MM-DD-slug.md, with YAML front matter (title, date, ...).
-Set `math: true` in front matter to load KaTeX on that page only.
+Set `katex: true` in front matter to load KaTeX on that page only.
 """
 import pathlib
 import re
 import subprocess
+import sys
 
 ROOT = pathlib.Path(__file__).parent
-SRC = ROOT / "src" / "posts"
-OUT = ROOT / "blog"
+DRAFTS = "--drafts" in sys.argv
+SRC = ROOT / "src" / ("drafts" if DRAFTS else "posts")
+OUT = ROOT / ("drafts" if DRAFTS else "blog")
 TEMPLATE = ROOT / "src" / "post.html"
 
 
@@ -34,7 +37,7 @@ def main() -> None:
     OUT.mkdir(exist_ok=True)
     for md in sorted(SRC.glob("*.md")):
         slug = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", md.stem)
-        has_math = re.search(r"^math:\s*true", md.read_text(), re.M)
+        has_math = re.search(r"^katex:\s*true", md.read_text(), re.M)
         args = [
             "pandoc", "-f", "markdown+tex_math_dollars", "-t", "html5",
             "--template", str(TEMPLATE), "--no-highlight",
@@ -43,7 +46,7 @@ def main() -> None:
         if has_math:
             args.append("--katex")
         subprocess.run(args, input=preprocess(md.read_text()), text=True, check=True)
-        print(f"built blog/{slug}.html")
+        print(f"built {OUT.name}/{slug}.html")
 
 
 if __name__ == "__main__":

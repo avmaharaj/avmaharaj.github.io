@@ -13,7 +13,7 @@ Plain static HTML personal site. No framework and no JavaScript on the homepage.
 python3 build.py        # needs pandoc (brew install pandoc)
 ```
 
-Add `math: true` to a post's front matter to load KaTeX on that page only. Then add a line for the post under "Writing" in `index.html`.
+Add `katex: true` to a post's front matter to load KaTeX on that page only. Then add a line for the post under "Writing" in `index.html`.
 
 ## Preview locally
 
